@@ -1,0 +1,7 @@
+field_name,pii_type,risk_level,description
+patient_id,MEDICAL,HIGH,Patient identifier
+medical_record_number,MEDICAL,HIGH,Medical record number
+diagnosis,MEDICAL,HIGH,Medical diagnosis information
+prescription,MEDICAL,HIGH,Prescription information
+treatment,MEDICAL,HIGH,Treatment information
+doctor_name,MEDICAL,MEDIUM,Healthcare provider name

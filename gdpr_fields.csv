@@ -1,0 +1,7 @@
+field_name,pii_type,risk_level,description
+first_name,NAME,MEDIUM,First name
+last_name,NAME,MEDIUM,Last name
+email,EMAIL,MEDIUM,Email address
+phone,PHONE,MEDIUM,Phone number
+address,ADDRESS,HIGH,Physical address
+ssn,ID,CRITICAL,Social security number

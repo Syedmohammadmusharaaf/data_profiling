@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Logging Test</title>
+</head>
+<body>
+    <h1>Frontend Logging Test</h1>
+    <p>Open browser console and refresh this page to check for logging errors.</p>
+    
+    <script>
+        // Test script to verify if the logging system is accessible
+        console.log('Testing frontend logging system...');
+        
+        // Check if the main app is accessible
+        fetch('/')
+        .then(response => {
+            console.log('✅ Frontend accessible:', response.status);
+            return response.text();
+        })
+        .then(html => {
+            if (html.includes('PII Scanner')) {
+                console.log('✅ PII Scanner app loaded successfully');
+                
+                // Test the error logging endpoint
+                return fetch('/api/log-frontend-error', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        level: 'ERROR',
+                        message: 'Test error from verification page',
+                        sessionId: 'verification-test'
+                    })
+                });
+            } else {
+                throw new Error('PII Scanner app not found in response');
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                console.log('✅ Error logging endpoint working');
+                return response.json();
+            } else {
+                throw new Error(`Error endpoint failed: ${response.status}`);
+            }
+        })
+        .then(data => {
+            console.log('✅ Error logged with ID:', data.error_id);
+            console.log('🎉 All frontend logging tests passed!');
+        })
+        .catch(error => {
+            console.error('❌ Frontend logging test failed:', error);
+        });
+    </script>
+</body>
+</html>

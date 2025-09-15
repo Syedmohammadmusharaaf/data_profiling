@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Fix Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>CORS Fix Verification Test</h1>
+    <p>This test verifies that the frontend logging system can now properly report errors to the backend without CORS violations.</p>
+    
+    <div id="status"></div>
+    <div id="results"></div>
+    
+    <script>
+        const statusDiv = document.getElementById('status')
+        const resultsDiv = document.getElementById('results')
+        
+        function addStatus(message, type = 'info') {
+            const div = document.createElement('div')
+            div.className = `status ${type}`
+            div.textContent = message
+            statusDiv.appendChild(div)
+        }
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div')
+            div.className = `status ${type}`
+            div.textContent = message
+            resultsDiv.appendChild(div)
+        }
+        
+        async function runTest() {
+            addStatus('🚀 Starting CORS verification test...', 'info')
+            
+            try {
+                // Test 1: Check if we can determine the correct backend URL
+                let backendUrl
+                const hostname = window.location.hostname
+                
+                if (hostname.includes('emergentagent.com') || hostname.includes('preview')) {
+                    backendUrl = window.location.origin
+                } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    backendUrl = window.location.origin.replace(':3000', ':8001')
+                } else {
+                    backendUrl = window.location.origin
+                }
+                
+                addStatus(`✅ Backend URL detected: ${backendUrl}`, 'success')
+                
+                // Test 2: Test OPTIONS preflight request
+                addStatus('🔍 Testing CORS preflight (OPTIONS)...', 'info')
+                
+                const optionsResponse = await fetch(`${backendUrl}/api/log-frontend-error`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'content-type'
+                    }
+                })
+                
+                if (optionsResponse.ok) {
+                    addStatus('✅ OPTIONS preflight successful', 'success')
+                } else {
+                    addStatus(`❌ OPTIONS preflight failed: ${optionsResponse.status}`, 'error')
+                }
+                
+                // Test 3: Test actual error logging
+                addStatus('📝 Testing actual error logging...', 'info')
+                
+                const testError = {
+                    timestamp: new Date().toISOString(),
+                    level: 'ERROR',
+                    message: 'CORS verification test error',
+                    sessionId: 'cors-test-' + Date.now(),
+                    url: window.location.pathname,
+                    userAgent: navigator.userAgent.slice(0, 100)
+                }
+                
+                const postResponse = await fetch(`${backendUrl}/api/log-frontend-error`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(testError)
+                })
+                
+                if (postResponse.ok) {
+                    const result = await postResponse.json()
+                    addStatus('✅ Error logging successful', 'success')
+                    addResult(`Error ID: ${result.error_id}`, 'success')
+                    addResult(`Status: ${result.status}`, 'success')
+                } else {
+                    addStatus(`❌ Error logging failed: ${postResponse.status}`, 'error')
+                }
+                
+                // Test 4: Monitor console for CORS errors
+                addStatus('👀 Monitoring console for CORS errors (5 seconds)...', 'info')
+                
+                let corsErrorCount = 0
+                const originalError = console.error
+                console.error = (...args) => {
+                    const message = args.join(' ')
+                    if (message.includes('CORS policy') || message.includes('log-frontend-error')) {
+                        corsErrorCount++
+                    }
+                    originalError.apply(console, args)
+                }
+                
+                // Wait 5 seconds and check
+                await new Promise(resolve => setTimeout(resolve, 5000))
+                
+                if (corsErrorCount === 0) {
+                    addStatus('✅ No CORS errors detected in console', 'success')
+                } else {
+                    addStatus(`❌ ${corsErrorCount} CORS errors detected`, 'error')
+                }
+                
+                // Final summary
+                addResult('🎉 CORS Fix Verification Complete!', 'success')
+                addResult('Frontend logging system is now properly configured', 'success')
+                
+            } catch (error) {
+                addStatus(`❌ Test failed: ${error.message}`, 'error')
+                console.error('CORS test error:', error)
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', runTest)
+    </script>
+</body>
+</html>

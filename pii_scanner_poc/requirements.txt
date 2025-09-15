@@ -1,0 +1,99 @@
+# =============================================================================
+# PII/PHI Scanner POC - Python Dependencies
+# =============================================================================
+# Version: 2.0.0 - Production Ready
+# Updated: December 2024
+
+# Core AI/ML Dependencies
+langchain-openai==0.3.27          # Azure OpenAI integration
+langchain-core==0.3.68            # LangChain framework core
+openai>=1.0.0                     # OpenAI API client
+tiktoken>=0.5.0                   # Token counting for OpenAI models
+
+# Database Connectivity
+# Install only what you need for your specific databases
+pyodbc>=4.0.34                    # SQL Server connectivity
+mysql-connector-python>=8.0.33    # MySQL/MariaDB connectivity
+oracledb>=1.4.0                   # Oracle Database connectivity
+psycopg2-binary>=2.9.5            # PostgreSQL connectivity (optional)
+
+# Data Processing
+pandas>=2.0.0                     # Data analysis and manipulation
+numpy>=1.24.0                     # Numerical computing
+openpyxl>=3.1.0                   # Excel file support (.xlsx)
+xlrd>=2.0.1                       # Excel file support (.xls)
+
+# Web and API Framework
+fastapi>=0.100.0                  # Web API framework
+uvicorn>=0.22.0                   # ASGI server
+jinja2>=3.1.0                     # Template engine for reports
+
+# Security and Encryption
+cryptography>=41.0.0              # Encryption and security
+pycryptodome>=3.18.0              # Additional crypto functions
+
+# Configuration and Environment
+python-dotenv>=1.0.0              # Environment variable management
+configparser                      # INI file parsing (built-in)
+
+# Logging and Monitoring
+structlog>=23.1.0                 # Structured logging
+python-json-logger>=2.0.7         # JSON log formatting
+
+# Model Context Protocol (MCP)
+mcp>=0.3.0                        # MCP server framework
+
+# Validation and Parsing
+email-validator>=2.0.0            # Email validation
+phonenumbers>=8.13.0              # Phone number validation
+fuzzywuzzy>=0.18.0                # Fuzzy string matching
+python-Levenshtein>=0.21.0        # String distance calculations
+
+# HTTP and Network
+requests>=2.31.0                  # HTTP library
+aiohttp>=3.8.5                    # Async HTTP client/server
+
+# Date and Time
+python-dateutil>=2.8.0            # Date parsing utilities
+
+# Development Dependencies (optional)
+# Uncomment for development environment
+# pytest>=7.4.0                   # Testing framework
+# black>=23.7.0                   # Code formatting
+# isort>=5.12.0                   # Import sorting
+# flake8>=6.0.0                   # Linting
+# mypy>=1.5.0                     # Type checking
+# pre-commit>=3.3.0               # Git hooks
+
+# =============================================================================
+# Installation Instructions
+# =============================================================================
+# 
+# 1. Create virtual environment:
+#    python -m venv venv
+#    source venv/bin/activate  # Unix/Linux/macOS
+#    venv\Scripts\activate     # Windows
+#
+# 2. Install dependencies:
+#    pip install -r requirements.txt
+#
+# 3. Validate installation:
+#    python run_tests.py --setup-only
+#
+# =============================================================================
+# Platform-Specific Notes
+# =============================================================================
+#
+# Windows:
+# - Install "ODBC Driver 17 for SQL Server" for pyodbc
+# - Visual C++ Build Tools may be required
+#
+# Linux:
+# - sudo apt-get install python3-dev build-essential libffi-dev
+# - For Oracle: Install Oracle Instant Client
+#
+# macOS:
+# - xcode-select --install
+# - Consider using Homebrew for system dependencies
+#
+# =============================================================================

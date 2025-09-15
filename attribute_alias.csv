@@ -1,0 +1,6 @@
+original,alias,category
+firstname,first_name,name
+lastname,last_name,name
+emailaddr,email_address,email
+phonenum,phone_number,phone
+addr,address,address
