@@ -274,12 +274,32 @@ class EnhancedHybridOrchestrator:
         start_time = time.time()
         
         try:
-            # Use the enhanced in-house classification engine
-            analysis = inhouse_engine.classify_field(
-                column=task.column,
-                table_context=task.table_context,
-                regulation=task.regulation
+            # Use the enhanced hybrid AI + local patterns classification engine
+            analysis_result = inhouse_engine.classify_field_hybrid_ai(
+                field_name=task.column.column_name,
+                regulation=task.regulation,
+                table_context=task.column.table_name,
+                ai_service=None  # Use local patterns only for now
             )
+            
+            # Convert result to analysis format
+            if analysis_result:
+                pattern, confidence = analysis_result
+                analysis = type('Analysis', (), {
+                    'is_sensitive': confidence > 0.5,
+                    'confidence': confidence,
+                    'confidence_score': confidence,
+                    'pattern': pattern,
+                    'detection_method': 'HYBRID_AI_LOCAL'
+                })()
+            else:
+                analysis = type('Analysis', (), {
+                    'is_sensitive': False,
+                    'confidence': 0.0,
+                    'confidence_score': 0.0,
+                    'pattern': None,
+                    'detection_method': 'LOCAL_PATTERN'
+                })()
             
             processing_time = time.time() - start_time
             

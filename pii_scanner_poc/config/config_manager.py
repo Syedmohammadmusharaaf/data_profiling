@@ -218,5 +218,6 @@ class ConfigurationManager:
             })
             return {}
 
-# Global configuration instance
-config_manager = ConfigurationManager()
+# Global configuration instance with correct .env path
+import os
+config_manager = ConfigurationManager(config_path=os.path.join(os.path.dirname(__file__), '..', '.env'))

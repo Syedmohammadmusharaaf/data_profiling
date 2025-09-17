@@ -487,6 +487,8 @@ class AppState:
     def __init__(self):
         self.pii_scanner = None
         self.orchestrator = None
+        self.classification_engine = None
+        self.ai_service = None  # Add AI service to app state
         self.active_sessions = {}
         self.performance_cache = {}
 
@@ -500,6 +502,28 @@ async def lifespan(app: FastAPI):
         main_logger.info("Starting PII Scanner initialization...")
         app_state.pii_scanner = PIIScannerFacade()
         main_logger.info("PII Scanner facade initialized")
+        
+        # Initialize classification engine for direct classification
+        from pii_scanner_poc.core.inhouse_classification_engine import InHouseClassificationEngine
+        app_state.classification_engine = InHouseClassificationEngine()
+        main_logger.info("Classification engine initialized")
+        
+        # Initialize AI service for hybrid AI + local patterns classification with proper config
+        try:
+            from pii_scanner_poc.services.enhanced_ai_service import EnhancedAIService
+            from pii_scanner_poc.core.configuration import ConfigurationManager
+            
+            # Create configuration manager and load config from .env file
+            config_manager = ConfigurationManager()
+            config = config_manager.load_configuration(
+                env_file="C:/Users/syed_musharaaf/Downloads/dataprofiling-temp19-fixing-main/dataprofiling-temp19-fixing-main/pii_scanner_poc/.env"
+            )
+            
+            app_state.ai_service = EnhancedAIService(config)
+            main_logger.info("AI service initialized for hybrid classification with proper config")
+        except Exception as ai_error:
+            main_logger.warning(f"AI service initialization failed, will use local patterns only: {ai_error}")
+            app_state.ai_service = None
         
         # Skip orchestrator initialization for now to avoid hanging
         # app_state.orchestrator = HybridClassificationOrchestrator()
@@ -559,7 +583,8 @@ async def health_check():
         "version": "2.0.0",
         "components": {
             "pii_scanner": app_state.pii_scanner is not None,
-            "orchestrator": app_state.orchestrator is not None
+            "orchestrator": app_state.orchestrator is not None,
+            "classification_engine": app_state.classification_engine is not None
         }
     }
 
@@ -820,8 +845,12 @@ async def classify_fields(request: ClassificationRequest):
                     # Instead of fallback, let's try direct classification
                     log_activity("INFO", "Attempting direct field classification as fallback", {}, session_id)
                     try:
-                        # Get the inhouse classification engine directly
-                        from pii_scanner_poc.core.inhouse_classification_engine import inhouse_engine
+                        # Use the properly initialized classification engine from app_state
+                        classification_engine = app_state.classification_engine
+                        if not classification_engine:
+                            # Fallback to creating a new engine if not initialized
+                            from pii_scanner_poc.core.inhouse_classification_engine import InHouseClassificationEngine
+                            classification_engine = InHouseClassificationEngine()
                         
                         # Create field analyses directly from selected fields
                         field_analyses = {}
@@ -836,23 +865,38 @@ async def classify_fields(request: ClassificationRequest):
                             field_name = field_data.get("column_name", "")
                             table_name = field_data.get("table_name", "")
                             
-                            # Try classification with each regulation
+                            # Try classification with each regulation using new Hybrid AI + Local Patterns
                             classification_result = None
                             for regulation in regulations:
                                 try:
-                                    # Use the enhanced classification with correct parameter passing
-                                    classification_result = inhouse_engine.classify_field(
-                                        field_name, regulation=regulation, table_context=table_name
+                                    # Use the new hybrid AI + local patterns classification method
+                                    classification_result = classification_engine.classify_field_hybrid_ai(
+                                        field_name, regulation=regulation, table_context=table_name, ai_service=app_state.ai_service
                                     )
                                     if classification_result and classification_result[1] > 0.5:  # confidence > 0.5
                                         break
                                 except Exception as class_error:
-                                    log_activity("WARN", f"Classification failed for field {field_name}", {
+                                    log_activity("WARN", f"Hybrid classification failed for field {field_name}, falling back to local", {
                                         "field_name": field_name,
                                         "regulation": regulation.value,
                                         "error": str(class_error)
                                     }, session_id)
-                                    continue
+                                    
+                                    # Fallback to local patterns only
+                                    try:
+                                        # Use the hybrid method with ai_service=None for local-only classification
+                                        classification_result = classification_engine.classify_field_hybrid_ai(
+                                            field_name, regulation=regulation, table_context=table_name, ai_service=None
+                                        )
+                                        if classification_result and classification_result[1] > 0.5:
+                                            break
+                                    except Exception as fallback_error:
+                                        log_activity("WARN", f"Local classification also failed for field {field_name}", {
+                                            "field_name": field_name,
+                                            "regulation": regulation.value,
+                                            "error": str(fallback_error)
+                                        }, session_id)
+                                        continue
                             
                             # Create field analysis
                             field_key = f"{table_name}.{field_name}"

@@ -464,8 +464,9 @@ class ConfigurationManager:
         return obj
 
 
-# Global configuration manager instance
-config_manager = ConfigurationManager()
+# Global configuration manager instance with proper .env path
+import os
+config_manager = ConfigurationManager(config_dir=os.path.join(os.path.dirname(__file__), '..'))
 
 # Convenience functions for accessing configuration
 def get_config() -> SystemConfig:

@@ -1,0 +1,54 @@
+2025-09-15 22:59:18,816 | pii_scanner_main | INFO | Loading configuration
+2025-09-15 22:59:18,824 | pii_scanner_main | WARNING | Missing AI environment variables: ['AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_DEPLOYMENT']. Using placeholders.
+2025-09-15 22:59:18,825 | pii_scanner_main | INFO | Configuration loaded successfully
+2025-09-15 22:59:18,827 | ai_service | DEBUG | Entering _initialize_client
+2025-09-15 22:59:21,989 | ai_service | INFO | AI client initialized successfully
+2025-09-15 22:59:21,990 | ai_service | DEBUG | Exiting _initialize_client: Client initialized
+2025-09-15 22:59:22,042 | pii_scanner_main | INFO | Regulatory pattern loader initialized
+2025-09-15 22:59:22,046 | pii_scanner_main | INFO | Loaded 0 HIPAA field patterns from 6 rows
+2025-09-15 22:59:22,048 | pii_scanner_main | INFO | Loaded 0 GDPR field patterns from 6 rows
+2025-09-15 22:59:22,049 | pii_scanner_main | INFO | Loaded 0 alias mappings
+2025-09-15 22:59:22,050 | pii_scanner_main | INFO | Comprehensive pattern database created
+2025-09-15 22:59:22,051 | pii_scanner_main | INFO | Regulatory patterns loaded successfully
+2025-09-15 22:59:22,053 | pii_scanner_main | INFO | Regulatory patterns merged with standard patterns
+2025-09-15 22:59:22,054 | pii_scanner_main | INFO | Comprehensive pattern initialization completed
+2025-09-15 22:59:22,055 | pii_scanner_main | INFO | Enhanced pattern library initialized
+2025-09-15 22:59:22,056 | pii_scanner_main | INFO | In-house classification engine initialized
+2025-09-15 22:59:22,084 | root | WARNING | LLM mode requested but no API key provided. Disabling LLM mode and falling back to local-only classification.
+2025-09-15 22:59:22,085 | pii_scanner_poc.core.configuration | WARNING | Project root does not exist: /app/pii_scanner_poc
+2025-09-15 22:59:22,086 | pii_scanner_poc.core.configuration | INFO | Configuration loaded successfully
+2025-09-15 22:59:22,087 | pii_scanner_poc.core.service_interfaces.enhanced_ai_service | ERROR | Failed to initialize AI service: [AISERVICEERROR_001] AI service API key not configured
+2025-09-15 22:59:22,090 | hybrid_workflow | INFO | Workflow logger initialized
+2025-09-15 22:59:22,093 | llm_interactions | INFO | LLM interaction logger initialized
+2025-09-15 22:59:22,096 | audit_trail | INFO | Audit logger initialized
+2025-09-15 22:59:22,169 | pii_scanner_main | INFO | Starting cache warming with common patterns
+2025-09-15 22:59:22,178 | pii_scanner_main | INFO | Cache warming completed successfully
+2025-09-15 22:59:22,179 | pii_scanner_main | INFO | Hybrid classification orchestrator initialized
+2025-09-15 22:59:22,187 | pii_scanner_main | INFO | Loaded 0 HIPAA field patterns from 6 rows
+2025-09-15 22:59:22,189 | pii_scanner_main | INFO | Loaded 0 GDPR field patterns from 6 rows
+2025-09-15 22:59:22,191 | pii_scanner_main | INFO | Loaded 0 alias mappings
+2025-09-15 22:59:22,192 | pii_scanner_main | INFO | Comprehensive pattern database created
+2025-09-15 22:59:22,193 | pii_scanner_main | INFO | Regulatory patterns loaded successfully
+2025-09-15 22:59:22,196 | pii_scanner_main | INFO | Regulatory patterns merged with standard patterns
+2025-09-15 22:59:22,197 | pii_scanner_main | INFO | Comprehensive pattern initialization completed
+2025-09-15 22:59:22,199 | pii_scanner_main | INFO | Enhanced pattern library initialized
+2025-09-15 22:59:22,199 | pii_scanner_main | INFO | In-house classification engine initialized
+2025-09-15 22:59:22,200 | __main__ | INFO | Classification engine initialized successfully
+2025-09-15 22:59:22,201 | __main__ | WARNING | AI service unavailable, will use enhanced local patterns: EnhancedAIService.__init__() missing 1 required positional argument: 'config'
+2025-09-15 22:59:22,202 | pii_scanner_main | INFO | Hybrid classification for customer_name: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.NAME
+2025-09-15 22:59:22,203 | pii_scanner_main | INFO | Hybrid classification for email_address: AI_conf=0.0, Local_conf=0.98, Final_conf=0.98, Type=PIIType.EMAIL
+2025-09-15 22:59:22,204 | pii_scanner_main | INFO | Hybrid classification for phone_number: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.PHONE
+2025-09-15 22:59:22,206 | pii_scanner_main | INFO | Hybrid classification for home_address: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.ADDRESS
+2025-09-15 22:59:22,207 | pii_scanner_main | INFO | Hybrid classification for ssn: AI_conf=0.0, Local_conf=0.98, Final_conf=0.98, Type=PIIType.ID
+2025-09-15 22:59:22,208 | pii_scanner_main | INFO | Hybrid classification for credit_card_number: AI_conf=0.0, Local_conf=0.98, Final_conf=0.98, Type=PIIType.FINANCIAL
+2025-09-15 22:59:22,210 | pii_scanner_main | INFO | Hybrid classification for user_id: AI_conf=0.0, Local_conf=0.9, Final_conf=0.9, Type=PIIType.ID
+2025-09-15 22:59:22,213 | pii_scanner_main | INFO | Hybrid classification for first_name: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.NAME
+2025-09-15 22:59:22,215 | pii_scanner_main | INFO | Hybrid classification for last_name: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.NAME
+2025-09-15 22:59:22,216 | pii_scanner_main | INFO | Hybrid classification for date_of_birth: AI_conf=0.0, Local_conf=0.95, Final_conf=0.95, Type=PIIType.DATE
+2025-09-15 22:59:22,218 | pii_scanner_main | INFO | Hybrid classification for business_id: AI_conf=0.0, Local_conf=0.7, Final_conf=0.7, Type=PIIType.OTHER
+2025-09-15 22:59:22,220 | pii_scanner_main | INFO | Hybrid classification for department_code: AI_conf=0.0, Local_conf=0.6, Final_conf=0.6, Type=PIIType.OTHER
+2025-09-15 22:59:22,221 | pii_scanner_main | INFO | Hybrid classification for product_name: AI_conf=0.0, Local_conf=0.85, Final_conf=0.85, Type=PIIType.NAME
+2025-09-15 22:59:22,223 | pii_scanner_main | INFO | Hybrid classification for order_status: AI_conf=0.0, Local_conf=0.7, Final_conf=0.7, Type=PIIType.OTHER
+2025-09-15 22:59:22,224 | pii_scanner_main | INFO | Hybrid classification for created_at: AI_conf=0.0, Local_conf=0.05, Final_conf=0.05, Type=PIIType.NONE
+2025-09-15 22:59:22,226 | pii_scanner_main | INFO | Hybrid classification for updated_by: AI_conf=0.0, Local_conf=0.6, Final_conf=0.6, Type=PIIType.DATE
+2025-09-15 22:59:22,228 | pii_scanner_main | INFO | Hybrid classification for row_id: AI_conf=0.0, Local_conf=0.65, Final_conf=0.65, Type=PIIType.ID

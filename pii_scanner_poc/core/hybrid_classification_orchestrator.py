@@ -583,16 +583,37 @@ class HybridClassificationOrchestrator:
                             
                             continue
                         
-                        # Step 2: Use in-house engine for pattern recognition
-                        analysis = inhouse_engine.classify_field(
-                            column, regulation=regulations[0], table_context=table_context_objects
+                        # Step 2: Use in-house engine for hybrid AI + local pattern recognition
+                        analysis_result = inhouse_engine.classify_field_hybrid_ai(
+                            column, regulation=regulations[0], table_context=table_context_objects, ai_service=ai_service
                         )
+                        
+                        # Convert result to analysis format
+                        if analysis_result:
+                            pattern, confidence = analysis_result
+                            analysis = type('Analysis', (), {
+                                'is_sensitive': confidence > 0.5,
+                                'applicable_regulations': [regulations[0]] if confidence > 0.5 else [],
+                                'pattern': pattern,
+                                'confidence': confidence
+                            })()
+                        else:
+                            analysis = type('Analysis', (), {
+                                'is_sensitive': False,
+                                'applicable_regulations': [],
+                                'pattern': None,
+                                'confidence': 0.0
+                            })()
                         
                         # Apply additional regulations
                         for additional_reg in regulations[1:]:
-                            additional_analysis = inhouse_engine.classify_field(
-                                column, regulation=additional_reg, table_context=table_context_objects
+                            additional_result = inhouse_engine.classify_field_hybrid_ai(
+                                column, regulation=additional_reg, table_context=table_context_objects, ai_service=ai_service
                             )
+                            
+                            # Merge regulations if additional analysis finds sensitivity
+                            if additional_result and additional_result[1] > 0.5 and additional_reg not in analysis.applicable_regulations:
+                                analysis.applicable_regulations.append(additional_reg)
                             
                             # Merge regulations if additional analysis finds sensitivity
                             if additional_analysis.is_sensitive and additional_reg not in analysis.applicable_regulations:
@@ -679,18 +700,39 @@ class HybridClassificationOrchestrator:
                     
                     continue
                 
-                # Step 2: Use in-house engine for pattern recognition
-                analysis = inhouse_engine.classify_field(
-                    column, regulation=regulations[0], table_context=table_context_objects
+                # Step 2: Use in-house engine for hybrid AI + local pattern recognition
+                analysis_result = inhouse_engine.classify_field_hybrid_ai(
+                    column.column_name, regulation=regulations[0], table_context=table_name, ai_service=None
                 )
+                
+                # Convert result to analysis format
+                if analysis_result:
+                    pattern, confidence = analysis_result
+                    analysis = type('Analysis', (), {
+                        'is_sensitive': confidence > 0.5,
+                        'applicable_regulations': [regulations[0]] if confidence > 0.5 else [],
+                        'pattern': pattern,
+                        'confidence': confidence,
+                        'confidence_score': confidence,
+                        'detection_method': 'HYBRID_AI_LOCAL'
+                    })()
+                else:
+                    analysis = type('Analysis', (), {
+                        'is_sensitive': False,
+                        'applicable_regulations': [],
+                        'pattern': None,
+                        'confidence': 0.0,
+                        'confidence_score': 0.0,
+                        'detection_method': 'LOCAL_PATTERN'
+                    })()
                 
                 # Apply additional regulations
                 for additional_reg in regulations[1:]:
-                    additional_analysis = inhouse_engine.classify_field(
-                        column, regulation=additional_reg, table_context=table_context_objects
+                    additional_result = inhouse_engine.classify_field_hybrid_ai(
+                        column.column_name, regulation=additional_reg, table_context=table_name, ai_service=None
                     )
                     
-                    if additional_analysis.is_sensitive and additional_reg not in analysis.applicable_regulations:
+                    if additional_result and additional_result[1] > 0.5 and additional_reg not in analysis.applicable_regulations:
                         analysis.applicable_regulations.append(additional_reg)
                 
                 if (analysis.confidence_score >= self.confidence_threshold and 
@@ -1344,15 +1386,26 @@ class HybridClassificationOrchestrator:
                             'regulation': regulation.value
                         })
                         
-                        # Use local engine only for cache warming (no AI calls)
+                        # Use hybrid classification method for cache warming (local patterns only)
                         try:
                             local_results = []
                             for column in columns:
-                                # Use classify_field method with correct parameters (field name as string)
-                                analysis = inhouse_engine.classify_field(
-                                    column.column_name, regulation, table_context=table_name
+                                # Use classify_field_hybrid_ai method with ai_service=None for local-only classification
+                                analysis_result = inhouse_engine.classify_field_hybrid_ai(
+                                    column.column_name, regulation=regulation, table_context=table_name, ai_service=None
                                 )
-                                local_results.append(analysis)
+                                
+                                # Convert result to analysis format for cache storage
+                                if analysis_result:
+                                    pattern, confidence = analysis_result
+                                    analysis = type('Analysis', (), {
+                                        'is_sensitive': confidence > 0.5,
+                                        'confidence': confidence,
+                                        'pattern': pattern,
+                                        'field_name': column.column_name,
+                                        'table_name': table_name
+                                    })()
+                                    local_results.append(analysis)
                             
                             # Store in cache for future use
                             if local_results:

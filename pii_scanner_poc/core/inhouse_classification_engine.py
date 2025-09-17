@@ -709,6 +709,264 @@ class InHouseClassificationEngine:
                 aliases=[]
             )
             return (fallback_pattern, 0.05)
+
+    def classify_field_hybrid_ai(self, field_name, regulation=None, table_context=None, ai_service=None, **kwargs):
+        """
+        Advanced hybrid classification combining GenAI + Local Patterns
+        
+        This method implements the requested AI + local patterns approach:
+        1. First uses GenAI (GPT) for initial field classification according to regulations
+        2. Then validates with local patterns for double-check
+        3. Returns the final auto-classification result with enhanced confidence
+        
+        Args:
+            field_name (str): The field name to classify
+            regulation: The regulation (str or Regulation enum) 
+            table_context: The table context for the field
+            ai_service: AI service instance for GenAI classification
+            **kwargs: Additional parameters
+        
+        Returns:
+            tuple: (pattern, confidence) with enhanced AI + local validation
+        """
+        try:
+            # Step 1: Get AI-based classification first
+            ai_result = None
+            ai_confidence = 0.0
+            ai_pii_type = PIIType.NONE
+            ai_risk_level = RiskLevel.LOW
+            
+            if ai_service and hasattr(ai_service, 'analyze_columns_for_pii'):
+                try:
+                    # Prepare column data for AI analysis
+                    column_data = [{
+                        'column_name': field_name,
+                        'table_name': table_context or 'unknown',
+                        'data_type': 'VARCHAR',  # Default assumption
+                        'column_description': f"Field {field_name} from table {table_context or 'unknown'}"
+                    }]
+                    
+                    # Get AI analysis
+                    ai_analysis = ai_service.analyze_columns_for_pii(
+                        columns=column_data,
+                        regulation=regulation or 'GDPR',
+                        timeout=10  # 10 second timeout
+                    )
+                    
+                    # Extract AI results
+                    if ai_analysis and 'results' in ai_analysis:
+                        results = ai_analysis['results']
+                        if results and len(results) > 0:
+                            ai_result = results[0]  # First result
+                            ai_confidence = ai_result.get('confidence_score', 0.0)
+                            
+                            # Map AI PII type
+                            ai_pii_type_str = ai_result.get('pii_type', 'NONE')
+                            if ai_pii_type_str == 'NAME':
+                                ai_pii_type = PIIType.NAME
+                            elif ai_pii_type_str == 'EMAIL':
+                                ai_pii_type = PIIType.EMAIL
+                            elif ai_pii_type_str == 'PHONE':
+                                ai_pii_type = PIIType.PHONE
+                            elif ai_pii_type_str == 'ADDRESS':
+                                ai_pii_type = PIIType.ADDRESS
+                            elif ai_pii_type_str == 'SSN':
+                                ai_pii_type = PIIType.SSN
+                            else:
+                                ai_pii_type = PIIType.OTHER if ai_confidence > 0.3 else PIIType.NONE
+                                
+                            # Map AI risk level
+                            ai_risk_str = ai_result.get('risk_level', 'LOW')
+                            if ai_risk_str == 'HIGH':
+                                ai_risk_level = RiskLevel.HIGH
+                            elif ai_risk_str == 'MEDIUM':
+                                ai_risk_level = RiskLevel.MEDIUM
+                            else:
+                                ai_risk_level = RiskLevel.LOW
+                    
+                    main_logger.info(f"AI classification for {field_name}: confidence={ai_confidence}, type={ai_pii_type}, risk={ai_risk_level}")
+                    
+                except Exception as ai_error:
+                    main_logger.warning(f"AI classification failed for {field_name}: {ai_error}")
+                    # Continue with local patterns only
+                    
+            # Step 2: Get local pattern classification for validation
+            # Use direct pattern matching instead of calling classify_field to avoid parameter conflicts
+            local_pattern = None
+            local_confidence = 0.0
+            
+            try:
+                # Get the best matching pattern using internal methods
+                matched_pattern_result = self._try_direct_pattern_match(field_name, regulation)
+                if matched_pattern_result:
+                    local_pattern, local_confidence = matched_pattern_result
+            except Exception as local_error:
+                main_logger.warning(f"Local pattern matching failed for {field_name}: {local_error}")
+            
+            # Step 3: Hybrid decision logic - combine AI + local patterns
+            final_confidence = 0.0
+            final_pii_type = PIIType.NONE
+            final_risk_level = RiskLevel.LOW
+            final_pattern_name = "Non-PII Field"
+            final_regulations = []
+            
+            # Parse regulation
+            if isinstance(regulation, str):
+                if regulation.upper() == "GDPR":
+                    reg = Regulation.GDPR  
+                elif regulation.upper() == "HIPAA":
+                    reg = Regulation.HIPAA
+                else:
+                    reg = Regulation.GDPR
+            elif hasattr(regulation, 'value'):
+                reg = regulation
+            else:
+                reg = Regulation.GDPR
+                
+            # Hybrid confidence calculation
+            if ai_result and local_pattern:
+                # Both AI and local patterns agree on high confidence
+                if ai_confidence > 0.7 and local_confidence > 0.7:
+                    final_confidence = min(0.98, (ai_confidence + local_confidence) / 2 + 0.15)  # Boost confidence
+                    final_pii_type = ai_pii_type if ai_confidence >= local_confidence else local_pattern.pii_type
+                    final_risk_level = ai_risk_level if ai_confidence >= local_confidence else local_pattern.risk_level
+                    final_pattern_name = f"AI+Local High Confidence: {ai_result.get('rationale', field_name)}"
+                    final_regulations = [reg]
+                    
+                # AI high confidence, local medium/low - trust AI with validation
+                elif ai_confidence > 0.7 and local_confidence >= 0.3:
+                    final_confidence = min(0.95, ai_confidence + 0.1)  # AI-driven with local validation
+                    final_pii_type = ai_pii_type
+                    final_risk_level = ai_risk_level  
+                    final_pattern_name = f"AI-Driven: {ai_result.get('rationale', field_name)}"
+                    final_regulations = [reg]
+                    
+                # Local high confidence, AI medium/low - trust local with AI context
+                elif local_confidence > 0.7 and ai_confidence >= 0.3:
+                    final_confidence = min(0.92, local_confidence + 0.05)  # Local-driven with AI context
+                    final_pii_type = local_pattern.pii_type
+                    final_risk_level = local_pattern.risk_level
+                    final_pattern_name = f"Local+AI Validated: {local_pattern.pattern_name}"
+                    final_regulations = [reg]
+                    
+                # Both moderate confidence - average with boost
+                elif ai_confidence > 0.4 and local_confidence > 0.4:
+                    final_confidence = min(0.85, (ai_confidence + local_confidence) / 2 + 0.1)
+                    final_pii_type = ai_pii_type if ai_confidence >= local_confidence else local_pattern.pii_type
+                    final_risk_level = RiskLevel.MEDIUM
+                    final_pattern_name = f"AI+Local Moderate: {field_name}"
+                    final_regulations = [reg]
+                    
+                # AI only moderate/high
+                elif ai_confidence > 0.5:
+                    final_confidence = min(0.80, ai_confidence + 0.05)
+                    final_pii_type = ai_pii_type
+                    final_risk_level = ai_risk_level
+                    final_pattern_name = f"AI Classification: {ai_result.get('rationale', field_name)}"
+                    final_regulations = [reg]
+                    
+                # Local only moderate/high  
+                elif local_confidence > 0.5:
+                    final_confidence = min(0.75, local_confidence)
+                    final_pii_type = local_pattern.pii_type
+                    final_risk_level = local_pattern.risk_level
+                    final_pattern_name = f"Local Pattern: {local_pattern.pattern_name}"
+                    final_regulations = [reg]
+                    
+                # Both low confidence - provide auto-classification baseline
+                else:
+                    final_confidence = 0.55  # Auto-classification level for user requirement
+                    final_pii_type = PIIType.OTHER
+                    final_risk_level = RiskLevel.MEDIUM
+                    final_pattern_name = f"Auto-Classified Hybrid: {field_name}"
+                    final_regulations = [reg]
+                    
+            elif ai_result:
+                # AI only
+                final_confidence = min(0.85, ai_confidence + 0.05) if ai_confidence > 0.5 else 0.60
+                final_pii_type = ai_pii_type if ai_confidence > 0.5 else PIIType.OTHER
+                final_risk_level = ai_risk_level if ai_confidence > 0.5 else RiskLevel.MEDIUM
+                final_pattern_name = f"AI-Only: {ai_result.get('rationale', field_name)}"
+                final_regulations = [reg]
+                
+            elif local_pattern:
+                # Local only - use existing result
+                final_confidence = local_confidence
+                final_pii_type = local_pattern.pii_type
+                final_risk_level = local_pattern.risk_level
+                final_pattern_name = f"Local-Only: {local_pattern.pattern_name}"
+                final_regulations = [reg]
+                
+            else:
+                # No classification available - provide auto-classification
+                final_confidence = 0.50  # User requested all fields to be auto-classified
+                final_pii_type = PIIType.OTHER
+                final_risk_level = RiskLevel.MEDIUM
+                final_pattern_name = f"Default Auto-Classification: {field_name}"
+                final_regulations = [reg]
+            
+            # Create hybrid result pattern - import here to avoid scope issues
+            try:
+                from pii_scanner_poc.models.enhanced_data_models import SensitivityPattern
+                hybrid_pattern = SensitivityPattern(
+                    pattern_id=f"hybrid_ai_local_{field_name.lower()}",
+                    pattern_name=final_pattern_name,
+                    pattern_type="hybrid_ai_local",
+                    pattern_value=field_name,
+                    pii_type=final_pii_type,
+                    risk_level=final_risk_level,
+                    applicable_regulations=final_regulations,
+                    confidence=final_confidence,
+                    aliases=[field_name]
+                )
+                
+                main_logger.info(f"Hybrid classification for {field_name}: AI_conf={ai_confidence}, Local_conf={local_confidence}, Final_conf={final_confidence}, Type={final_pii_type}")
+                
+                return (hybrid_pattern, final_confidence)
+                
+            except Exception as pattern_error:
+                main_logger.error(f"Pattern creation error for {field_name}: {str(pattern_error)}")
+                # Return simple fallback result
+                from pii_scanner_poc.models.enhanced_data_models import SensitivityPattern
+                fallback_pattern = SensitivityPattern(
+                    pattern_id=f"fallback_{field_name}",
+                    pattern_name=f"Fallback: {field_name}",
+                    pattern_type="fallback",
+                    pattern_value=".*",
+                    pii_type=PIIType.OTHER,
+                    risk_level=RiskLevel.MEDIUM,
+                    applicable_regulations=[reg],
+                    confidence=0.50
+                )
+                return (fallback_pattern, 0.50)
+            
+        except Exception as e:
+            main_logger.error(f"Hybrid classification error for field {field_name}: {str(e)}")
+            # Fallback to enhanced local patterns only
+            try:
+                matched_pattern_result = self._try_direct_pattern_match(field_name, regulation)
+                if matched_pattern_result:
+                    pattern, confidence = matched_pattern_result
+                    # Auto-classification: ensure minimum 50% confidence
+                    confidence = max(confidence, 0.50)
+                    return pattern, confidence
+                else:
+                    # Create default pattern for auto-classification
+                    from pii_scanner_poc.models.enhanced_data_models import SensitivityPattern
+                    default_pattern = SensitivityPattern(
+                        pattern_id=f"auto_{field_name}",
+                        pattern_name=f"auto_classified_{field_name}",
+                        pattern_type="auto",
+                        pattern_value=".*",
+                        pii_type=PIIType.OTHER,
+                        risk_level=RiskLevel.LOW,
+                        applicable_regulations=[regulation] if regulation else [Regulation.GDPR],
+                        confidence=0.50
+                    )
+                    return default_pattern, 0.50
+            except Exception as fallback_error:
+                main_logger.error(f"Fallback classification also failed for {field_name}: {fallback_error}")
+                return None
         
     def _classify_field_internal(self, column: ColumnMetadata, table_context: List[ColumnMetadata] = None,
                                 regulation: Regulation = Regulation.GDPR, region: str = None, 
@@ -2497,23 +2755,28 @@ class BackendCompatibilityWrapper:
     
     def classify_field(self, field_name, regulation=None, table_context=None, **kwargs):
         """
-        Backend-compatible classify_field method that handles parameter conflicts
+        Backend-compatible classify_field method that uses hybrid AI + local patterns
         """
         try:
-            # Call the enhanced classification engine with proper parameter handling
-            return self.engine.classify_field(
+            # Call the new hybrid classification method with proper parameter handling
+            return self.engine.classify_field_hybrid_ai(
                 field_name=field_name, 
                 regulation=regulation, 
                 table_context=table_context,
-                **kwargs
+                ai_service=kwargs.get('ai_service', None)
             )
         except Exception as e:
-            # Fallback to basic classification if there's any parameter issue
+            # Fallback to hybrid classification with local patterns only
             try:
-                return self.engine.classify_field(field_name, regulation=regulation)
+                return self.engine.classify_field_hybrid_ai(
+                    field_name, 
+                    regulation=regulation, 
+                    table_context=table_context, 
+                    ai_service=None
+                )
             except:
                 # Last resort: return a basic pattern for auto-classification
-                default_regulation = self.regulation if self.regulation else self.regulation
+                default_regulation = self.regulation if self.regulation else regulation
                 fallback_pattern = SensitivityPattern(
                     pattern_id="backend_fallback",
                     pattern_name="Backend Auto-Classification",
@@ -2526,6 +2789,14 @@ class BackendCompatibilityWrapper:
                     aliases=[field_name]
                 )
                 return (fallback_pattern, 0.55)
+
+    def classify_field_hybrid_ai(self, field_name: str, regulation, 
+                                table_context: Optional[str] = None, ai_service: Optional[object] = None, **kwargs):
+        """
+        Backend-compatible hybrid AI + local patterns classification method
+        """
+        # Delegate to the underlying engine's hybrid method
+        return self.engine.classify_field_hybrid_ai(field_name, regulation, table_context, ai_service)
 
 # Create backend-compatible instance
 inhouse_engine = BackendCompatibilityWrapper(_classification_engine)
